@@ -13,3 +13,4 @@ pbkdf2 = "0.12.2"
 k256 = {version = "0.13.4", features = ["ecdsa"] } 
 hmac = "0.12.1"
 ripemd = "0.1.3"
+hex-literal = "1.0.0"
