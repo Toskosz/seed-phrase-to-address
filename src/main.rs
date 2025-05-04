@@ -1,5 +1,6 @@
 mod bip39;
 mod bip32;
+mod bech32;
 
 use clap::Parser;
 
