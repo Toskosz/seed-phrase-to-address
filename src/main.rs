@@ -1,6 +1,7 @@
 mod bip39;
 mod bip32;
 mod bech32;
+mod address;
 
 use clap::Parser;
 
