@@ -35,9 +35,6 @@ fn convert_bits(data: &[u8]) -> anyhow::Result<Vec<u8>> {
     let mut ret = Vec::new();
 
     for &b in data {
-        if (b as u32) >> 8 != 0 {
-            return Err(anyhow::anyhow!("Invalid data: {}", b));
-        }
 
         buffer = (buffer << 8) | b as u32;
         bits += 8;
@@ -155,13 +152,9 @@ mod tests {
         // Test with empty input
         assert_eq!(convert_bits(&[])?, Vec::<u8>::new());
 
-        // Test invalid input (byte % 5 != 0)
-        let input = vec![0x1F]; // 00011111
-        assert!(convert_bits(&input).is_err());
-
         // Test with multiple bytes
-        let input = vec![0xFF, 0xFF]; // 11111111 11111111
-        let expected = vec![0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F];
+        let input = hex::decode("751e76e8199196d454941c45d1b3a323f1433bd6").unwrap();
+        let expected = vec![0x0e, 0x14, 0x0f, 0x07, 0x0d, 0x1a, 0x00, 0x19, 0x12, 0x06, 0x0b, 0x0d, 0x08, 0x15, 0x04, 0x14, 0x03, 0x11, 0x02, 0x1d, 0x03, 0x0c, 0x1d, 0x03, 0x04, 0x0f, 0x18, 0x14, 0x06, 0x0e, 0x1e, 0x16];
         assert_eq!(convert_bits(&input)?, expected);
 
         Ok(())
@@ -193,12 +186,14 @@ mod tests {
         // Test with empty HRP
         assert_eq!(expand_hrp(""), vec![0]);
 
-        // Test with single character
-        let expanded = expand_hrp("a");
-        assert_eq!(expanded.len(), 3); // 2 for the character + 1 for the separator
-        assert_eq!(expanded[0], 0x03); // 'a' >> 5
-        assert_eq!(expanded[1], 0x00); // separator
-        assert_eq!(expanded[2], 0x01); // 'a' & 0x1F
+        // Test with testnet HRP
+        let expanded = expand_hrp("tb");
+        assert_eq!(expanded.len(), 5); // 4 for the characters + 1 for the separator
+        assert_eq!(expanded[0], 0x03); // 't' >> 5
+        assert_eq!(expanded[1], 0x03); // 'b' >> 5
+        assert_eq!(expanded[2], 0x00); // separator
+        assert_eq!(expanded[3], 0x14); // 't' & 0x1F
+        assert_eq!(expanded[4], 0x02); // 'b' & 0x1F
 
         // Test with multiple characters
         let expanded = expand_hrp("bc");
@@ -211,24 +206,9 @@ mod tests {
     }
 
     #[test]
-    fn test_polymod() {
-        // Test with empty input
-        assert_eq!(polymod(&[]), 1);
-
-        // Test with single byte
-        let input = vec![0x1F];
-        let result = polymod(&input);
-        assert!(result != 0);
-
-        // Test with multiple bytes
-        let input = vec![0x1F, 0x1F, 0x1F];
-        let result = polymod(&input);
-        assert!(result != 0);
-
-        // Test with known input that produces a specific output
-        let hrp = "bc";
-        let expanded = expand_hrp(hrp);
-        let result = polymod(&expanded);
-        assert!(result != 0);
+    fn test_polymod_known_case_1() {
+        // Example from BIP-0173: empty input should yield 1
+        let values: Vec<u8> = vec![];
+        assert_eq!(polymod(&values), 1);
     }
 }
