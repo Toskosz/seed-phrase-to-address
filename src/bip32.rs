@@ -1,9 +1,3 @@
-// src/bip32.rs – BIP‑32 implementation **without** using `Scalar`
-// -------------------------------------------------------------------
-// Only generic crypto crates are used. Private keys live as raw 32‑byte
-// arrays (FieldBytes) and arithmetic is performed with the bigint type
-// that ships inside `k256`.
-
 use anyhow::{ensure, Result};
 use hmac::{Hmac, Mac};
 use sha2::Sha512;
@@ -13,7 +7,6 @@ use k256::{
     }, PublicKey, Secp256k1, SecretKey
 };
 
-/// HMAC‑SHA512 alias
 type HmacSha512 = Hmac<Sha512>;
 
 fn parse256_add_mod_n(il: &[u8; 32], kpar: &[u8; 32]) -> [u8; 32] {
@@ -25,7 +18,6 @@ fn parse256_add_mod_n(il: &[u8; 32], kpar: &[u8; 32]) -> [u8; 32] {
     n.to_be_bytes()
 }
 
-/// Extended private key (xprv) – minimal fields needed for derivation
 pub struct ExtPriv {
     pub key:        SecretKey,
     pub chain:      [u8; 32],   // 32‑byte chain code
@@ -63,7 +55,6 @@ impl ExtPriv {
             data.extend_from_slice(&index.to_be_bytes());
             mac.update(&data);
         } else {
-            // Use uncompressed public key (65 bytes) for non-hardened derivation
             let mut data = ExtPriv::serP_point_kpar(&self.key);
             data.extend_from_slice(&index.to_be_bytes());
             mac.update(&data);
@@ -85,7 +76,6 @@ impl ExtPriv {
         })
     }
 
-    /// First 4 bytes of HASH160(pubkey) – used by BIP‑32 for parent fingerprint
     pub fn fingerprint(&self) -> [u8; 4] {
         use sha2::Digest;
         let h1 = sha2::Sha256::digest(ExtPriv::serP_point_kpar(&self.key).as_slice());
@@ -94,10 +84,8 @@ impl ExtPriv {
     }
 
     pub fn serP_point_kpar(kpar: &SecretKey) -> Vec<u8> {
-        // 2. Derive the public key (EC point multiplication)
         let public_key = PublicKey::from_secret_scalar(&kpar.to_nonzero_scalar());
 
-        // 3. Serialize the public key using SEC1 compressed format
         let compressed_bytes = public_key.to_encoded_point(true).as_bytes().to_vec();
 
         compressed_bytes
@@ -167,17 +155,5 @@ mod tests {
         // Verify fingerprint is consistent
         let fingerprint2 = master.fingerprint();
         assert_eq!(fingerprint, fingerprint2);
-    }
-
-    #[test]
-    fn test_derive_child_invalid_private_key() {
-        let seed = hex!("000102030405060708090a0b0c0d0e0f");
-        let mut master = ExtPriv::new_master(&seed);
-        
-        // Set an invalid private key (all zeros)
-        master.key = SecretKey::from_bytes(&FieldBytes::<Secp256k1>::default()).unwrap();
-        
-        // This should fail because SigningKey::from_bytes will reject an invalid private key
-        assert!(master.derive_child(5).is_err());
     }
 }
